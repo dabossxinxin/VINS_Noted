@@ -1,11 +1,11 @@
 #include "initial_sfm.h"
 
-GlobalSFM::GlobalSFM(){}
-
-//三角化两帧间某个对应特征点的深度
-void GlobalSFM::triangulatePoint(Eigen::Matrix<double, 3, 4> &Pose0, Eigen::Matrix<double, 3, 4> &Pose1,
-						Vector2d &point0, Vector2d &point1, Vector3d &point_3d)
-{
+void GlobalSFM::triangulatePoint(
+	Eigen::Matrix<double, 3, 4> &Pose0,
+	Eigen::Matrix<double, 3, 4> &Pose1,
+	Eigen::Vector2d &point0,
+	Eigen::Vector2d &point1,
+	Eigen::Vector3d &point_3d) {
 	Matrix4d design_matrix = Matrix4d::Zero();
 	design_matrix.row(0) = point0[0] * Pose0.row(2) - Pose0.row(0);
 	design_matrix.row(1) = point0[1] * Pose0.row(2) - Pose0.row(1);
@@ -13,28 +13,29 @@ void GlobalSFM::triangulatePoint(Eigen::Matrix<double, 3, 4> &Pose0, Eigen::Matr
 	design_matrix.row(3) = point1[1] * Pose1.row(2) - Pose1.row(1);
 	Vector4d triangulated_point;
 	triangulated_point =
-		      design_matrix.jacobiSvd(Eigen::ComputeFullV).matrixV().rightCols<1>();
+		design_matrix.jacobiSvd(Eigen::ComputeFullV).matrixV().rightCols<1>();
 	point_3d(0) = triangulated_point(0) / triangulated_point(3);
 	point_3d(1) = triangulated_point(1) / triangulated_point(3);
 	point_3d(2) = triangulated_point(2) / triangulated_point(3);
 }
 
-//PNP方法得到第l帧到第i帧的R_initial、P_initial
-bool GlobalSFM::solveFrameByPnP(Matrix3d &R_initial, Vector3d &P_initial, int i,
-								vector<SFMFeature> &sfm_f)
-{
+bool GlobalSFM::solveFrameByPnP(
+	Eigen::Matrix3d &R_initial, 
+	Eigen::Vector3d &P_initial, 
+	int i,
+	std::vector<SFMFeature> &sfm_f) {
+	// 将第i帧的特征点以及对应的3D路标点取出来
 	vector<cv::Point2f> pts_2_vector;
 	vector<cv::Point3f> pts_3_vector;
-	for (int j = 0; j < feature_num; j++)
-	{
-		if (sfm_f[j].state != true)
+	for (int j = 0; j < feature_num; ++j) {
+		if (sfm_f[j].state != true) {
 			continue;
-		Vector2d point2d;
-		for (int k = 0; k < (int)sfm_f[j].observation.size(); k++)
-		{
-			if (sfm_f[j].observation[k].first == i)
-			{
-				Vector2d img_pts = sfm_f[j].observation[k].second;
+		}
+	
+		Eigen::Vector2d point2d;
+		for (int k = 0; k < (int)sfm_f[j].observation.size(); ++k) {
+			if (sfm_f[j].observation[k].first == i) {
+				Eigen::Vector2d img_pts = sfm_f[j].observation[k].second;
 				cv::Point2f pts_2(img_pts(0), img_pts(1));
 				pts_2_vector.push_back(pts_2);
 				cv::Point3f pts_3(sfm_f[j].position[0], sfm_f[j].position[1], sfm_f[j].position[2]);
@@ -43,11 +44,13 @@ bool GlobalSFM::solveFrameByPnP(Matrix3d &R_initial, Vector3d &P_initial, int i,
 			}
 		}
 	}
-	if (int(pts_2_vector.size()) < 15)
-	{
-		printf("unstable features tracking, please slowly move you device!\n");
-		if (int(pts_2_vector.size()) < 10)
+
+	// 根据当前帧中
+	if (int(pts_2_vector.size()) < 15) {
+		printf("unstable features tracki ng, please slowly move you device!\n");
+		if (int(pts_2_vector.size()) < 10) {
 			return false;
+		}
 	}
 	cv::Mat r, rvec, t, D, tmp_r;
 	cv::eigen2cv(R_initial, tmp_r);
