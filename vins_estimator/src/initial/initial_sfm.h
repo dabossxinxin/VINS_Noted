@@ -59,9 +59,9 @@ class GlobalSFM
 public:
 	GlobalSFM() {}
 
-	bool construct(int frame_num, Quaterniond* q, Vector3d* T, int l,
-		const Matrix3d relative_R, const Vector3d relative_T,
-		vector<SFMFeature> &sfm_f, map<int, Vector3d> &sfm_tracked_points);
+	bool construct(int frame_num, Eigen::Quaterniond* q, Eigen::Vector3d* T, int l,
+		const Eigen::Matrix3d relative_R, const Eigen::Vector3d relative_T,
+		std::vector<SFMFeature> &sfm_f, std::map<int, Eigen::Vector3d> &sfm_tracked_points);
 
 private:
 	// 通过PnP求解地图中某一帧(l->i)的位姿
@@ -76,5 +76,6 @@ private:
 		int frame1, Eigen::Matrix<double, 3, 4> &Pose1,
 		std::vector<SFMFeature> &sfm_f);
 
+	// sfm系统中输入的特征点的数量
 	int feature_num;
 };
