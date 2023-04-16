@@ -96,7 +96,7 @@ Matrix3d InitialEXRotation::solveRelativeR(
         double ratio2 = (std::max)(testTriangulation(ll, rr, R2, t1), testTriangulation(ll, rr, R2, t2));
         cv::Mat_<double> ans_R_cv = ratio1 > ratio2 ? R1 : R2;
 
-        // 对R求转置
+        // 对R求转置，转换为相对于世界系的旋转
         Eigen::Matrix3d ans_R_eigen;
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
