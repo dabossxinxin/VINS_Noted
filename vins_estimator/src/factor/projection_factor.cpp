@@ -3,8 +3,8 @@
 Eigen::Matrix2d ProjectionFactor::sqrt_info;
 double ProjectionFactor::sum_t;
 
-ProjectionFactor::ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j) : pts_i(_pts_i), pts_j(_pts_j)
-{
+ProjectionFactor::ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j) :
+	pts_i(_pts_i), pts_j(_pts_j) {
 #ifdef UNIT_SPHERE_ERROR
     Eigen::Vector3d b1, b2;
     Eigen::Vector3d a = pts_j.normalized();
@@ -18,8 +18,10 @@ ProjectionFactor::ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::V
 #endif
 };
 
-bool ProjectionFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
-{
+bool ProjectionFactor::Evaluate(
+	double const *const *parameters, 
+	double *residuals, 
+	double **jacobians) const {
     TicToc tic_toc;
     Eigen::Vector3d Pi(parameters[0][0], parameters[0][1], parameters[0][2]);
     Eigen::Quaterniond Qi(parameters[0][6], parameters[0][3], parameters[0][4], parameters[0][5]);
@@ -28,8 +30,7 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     Eigen::Quaterniond Qj(parameters[1][6], parameters[1][3], parameters[1][4], parameters[1][5]);
 
     Eigen::Vector3d tic(parameters[2][0], parameters[2][1], parameters[2][2]);
-    Eigen::Quaterniond qic(parameters[2][6], parameters[2][3], parameters[2][4], parameters[2][5]);
-
+	Eigen::Quaterniond qic(parameters[2][6], parameters[2][3], parameters[2][4], parameters[2][5]);
 
     //pts_i 是i时刻归一化相机坐标系下的3D坐标
     //第i帧相机坐标系下的的逆深度
@@ -41,11 +42,10 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     //世界坐标系下的3D坐标
     Eigen::Vector3d pts_w = Qi * pts_imu_i + Pi;
     //第j帧imu坐标系下的3D坐标
-    Eigen::Vector3d pts_imu_j = Qj.inverse() * (pts_w - Pj);
+	Eigen::Vector3d pts_imu_j = Qj.inverse() * (pts_w - Pj);
     //第j帧相机坐标系下的3D坐标
     Eigen::Vector3d pts_camera_j = qic.inverse() * (pts_imu_j - tic);
     Eigen::Map<Eigen::Vector2d> residual(residuals);
-
 
     // 残差构建
     // 根据不同的相机模型
@@ -80,8 +80,7 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
         reduce << 1. / dep_j, 0, -pts_camera_j(0) / (dep_j * dep_j),
             0, 1. / dep_j, -pts_camera_j(1) / (dep_j * dep_j);
 #endif
-        reduce = sqrt_info * reduce;
-
+		reduce = sqrt_info * reduce;
 
         // 残差项的Jacobian
         // 先求fci对各项的Jacobian，然后用链式法则乘起来
@@ -137,18 +136,18 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     return true;
 }
 
-void ProjectionFactor::check(double **parameters)
-{
+void ProjectionFactor::check(
+	double **parameters) {
     double *res = new double[15];
     double **jaco = new double *[4];
     jaco[0] = new double[2 * 7];
     jaco[1] = new double[2 * 7];
     jaco[2] = new double[2 * 7];
     jaco[3] = new double[2 * 1];
-    Evaluate(parameters, res, jaco);
-    puts("check begins");
+	Evaluate(parameters, res, jaco);
+	puts("check begins");
 
-    puts("my");
+	puts("my");
 
     std::cout << Eigen::Map<Eigen::Matrix<double, 2, 1>>(res).transpose() << std::endl
               << std::endl;
@@ -177,7 +176,6 @@ void ProjectionFactor::check(double **parameters)
     Eigen::Vector3d pts_imu_j = Qj.inverse() * (pts_w - Pj);
     Eigen::Vector3d pts_camera_j = qic.inverse() * (pts_imu_j - tic);
 
-
     Eigen::Vector2d residual;
 #ifdef UNIT_SPHERE_ERROR 
     residual =  tangent_base * (pts_camera_j.normalized() - pts_j.normalized());
@@ -192,8 +190,7 @@ void ProjectionFactor::check(double **parameters)
 
     const double eps = 1e-6;
     Eigen::Matrix<double, 2, 19> num_jacobian;
-    for (int k = 0; k < 19; k++)
-    {
+    for (int k = 0; k < 19; k++) {
         Eigen::Vector3d Pi(parameters[0][0], parameters[0][1], parameters[0][2]);
         Eigen::Quaterniond Qi(parameters[0][6], parameters[0][3], parameters[0][4], parameters[0][5]);
 
@@ -204,7 +201,7 @@ void ProjectionFactor::check(double **parameters)
         Eigen::Quaterniond qic(parameters[2][6], parameters[2][3], parameters[2][4], parameters[2][5]);
         double inv_dep_i = parameters[3][0];
 
-        int a = k / 3, b = k % 3;
+		int a = k / 3, b = k % 3;
         Eigen::Vector3d delta = Eigen::Vector3d(b == 0, b == 1, b == 2) * eps;
 
         if (a == 0)

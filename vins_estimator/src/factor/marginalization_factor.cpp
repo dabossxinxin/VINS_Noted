@@ -1,147 +1,129 @@
 #include "marginalization_factor.h"
 
-void ResidualBlockInfo::Evaluate()
-{
-    residuals.resize(cost_function->num_residuals());
+void ResidualBlockInfo::Evaluate() {
+	residuals.resize(cost_function->num_residuals());
 
-    std::vector<int> block_sizes = cost_function->parameter_block_sizes();
-    raw_jacobians = new double *[block_sizes.size()];
-    jacobians.resize(block_sizes.size());
+	std::vector<int> block_sizes = cost_function->parameter_block_sizes();
+	raw_jacobians = new double *[block_sizes.size()];
+	jacobians.resize(block_sizes.size());
 
-    for (int i = 0; i < static_cast<int>(block_sizes.size()); i++)
-    {
-        jacobians[i].resize(cost_function->num_residuals(), block_sizes[i]);
-        raw_jacobians[i] = jacobians[i].data();
-        //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
-    }
-    cost_function->Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+	// 根据残差维度与优化变量维度初始化jacobian矩阵的维度
+	for (int i = 0; i < static_cast<int>(block_sizes.size()); i++) {
+		jacobians[i].resize(cost_function->num_residuals(), block_sizes[i]);
+		raw_jacobians[i] = jacobians[i].data();
+		//dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+	}
+	cost_function->Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
 
-    //std::vector<int> tmp_idx(block_sizes.size());
-    //Eigen::MatrixXd tmp(dim, dim);
-    //for (int i = 0; i < static_cast<int>(parameter_blocks.size()); i++)
-    //{
-    //    int size_i = localSize(block_sizes[i]);
-    //    Eigen::MatrixXd jacobian_i = jacobians[i].leftCols(size_i);
-    //    for (int j = 0, sub_idx = 0; j < static_cast<int>(parameter_blocks.size()); sub_idx += block_sizes[j] == 7 ? 6 : block_sizes[j], j++)
-    //    {
-    //        int size_j = localSize(block_sizes[j]);
-    //        Eigen::MatrixXd jacobian_j = jacobians[j].leftCols(size_j);
-    //        tmp_idx[j] = sub_idx;
-    //        tmp.block(tmp_idx[i], tmp_idx[j], size_i, size_j) = jacobian_i.transpose() * jacobian_j;
-    //    }
-    //}
-    //Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> saes(tmp);
-    //std::cout << saes.eigenvalues() << std::endl;
-    //ROS_ASSERT(saes.eigenvalues().minCoeff() >= -1e-6);
+	//std::vector<int> tmp_idx(block_sizes.size());
+	//Eigen::MatrixXd tmp(dim, dim);
+	//for (int i = 0; i < static_cast<int>(parameter_blocks.size()); i++)
+	//{
+	//    int size_i = localSize(block_sizes[i]);
+	//    Eigen::MatrixXd jacobian_i = jacobians[i].leftCols(size_i);
+	//    for (int j = 0, sub_idx = 0; j < static_cast<int>(parameter_blocks.size()); sub_idx += block_sizes[j] == 7 ? 6 : block_sizes[j], j++)
+	//    {
+	//        int size_j = localSize(block_sizes[j]);
+	//        Eigen::MatrixXd jacobian_j = jacobians[j].leftCols(size_j);
+	//        tmp_idx[j] = sub_idx;
+	//        tmp.block(tmp_idx[i], tmp_idx[j], size_i, size_j) = jacobian_i.transpose() * jacobian_j;
+	//    }
+	//}
+	//Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> saes(tmp);
+	//std::cout << saes.eigenvalues() << std::endl;
+	//ROS_ASSERT(saes.eigenvalues().minCoeff() >= -1e-6);
 
-    if (loss_function)
-    {
-        double residual_scaling_, alpha_sq_norm_;
+	// 添加鲁棒核函数后，根据该函数的性质重新组织雅可比和残差
+	if (loss_function) {
+		double residual_scaling_;
+		double alpha_sq_norm_;
+		double sq_norm, rho[3];
 
-        double sq_norm, rho[3];
+		sq_norm = residuals.squaredNorm();
+		loss_function->Evaluate(sq_norm, rho);
+		double sqrt_rho1_ = sqrt(rho[1]);
 
-        sq_norm = residuals.squaredNorm();
-        loss_function->Evaluate(sq_norm, rho);
-        //printf("sq_norm: %f, rho[0]: %f, rho[1]: %f, rho[2]: %f\n", sq_norm, rho[0], rho[1], rho[2]);
+		if ((sq_norm == 0.0) || (rho[2] <= 0.0)) {
+			residual_scaling_ = sqrt_rho1_;
+			alpha_sq_norm_ = 0.0;
+		}
+		else {
+			const double D = 1.0 + 2.0 * sq_norm * rho[2] / rho[1];
+			const double alpha = 1.0 - sqrt(D);
+			residual_scaling_ = sqrt_rho1_ / (1 - alpha);
+			alpha_sq_norm_ = alpha / sq_norm;
+		}
 
-        double sqrt_rho1_ = sqrt(rho[1]);
+		for (int i = 0; i < static_cast<int>(parameter_blocks.size()); i++) {
+			jacobians[i] = sqrt_rho1_ * (jacobians[i] - alpha_sq_norm_ * residuals * (residuals.transpose() * jacobians[i]));
+		}
 
-        if ((sq_norm == 0.0) || (rho[2] <= 0.0))
-        {
-            residual_scaling_ = sqrt_rho1_;
-            alpha_sq_norm_ = 0.0;
-        }
-        else
-        {
-            const double D = 1.0 + 2.0 * sq_norm * rho[2] / rho[1];
-            const double alpha = 1.0 - sqrt(D);
-            residual_scaling_ = sqrt_rho1_ / (1 - alpha);
-            alpha_sq_norm_ = alpha / sq_norm;
-        }
-
-        for (int i = 0; i < static_cast<int>(parameter_blocks.size()); i++)
-        {
-            jacobians[i] = sqrt_rho1_ * (jacobians[i] - alpha_sq_norm_ * residuals * (residuals.transpose() * jacobians[i]));
-        }
-
-        residuals *= residual_scaling_;
-    }
+		residuals *= residual_scaling_;
+	}
 }
 
-MarginalizationInfo::~MarginalizationInfo()
-{
-    //ROS_WARN("release marginlizationinfo");
-    
-    for (auto it = parameter_block_data.begin(); it != parameter_block_data.end(); ++it)
-        delete it->second;
+MarginalizationInfo::~MarginalizationInfo() {
+	for (auto it = parameter_block_data.begin();
+		it != parameter_block_data.end(); ++it) {
+		delete it->second;
+	}
 
-    for (int i = 0; i < (int)factors.size(); i++)
-    {
-
+    for (int i = 0; i < (int)factors.size(); i++) {
         delete[] factors[i]->raw_jacobians;
-        
         delete factors[i]->cost_function;
-
         delete factors[i];
     }
 }
 
-//添加残差块相关信息（优化变量，待边缘化变量）
-void MarginalizationInfo::addResidualBlockInfo(ResidualBlockInfo *residual_block_info)
-{
+// 添加残差块相关信息（优化变量，待边缘化变量）
+void MarginalizationInfo::addResidualBlockInfo(
+	ResidualBlockInfo *residual_block_info) {
     factors.emplace_back(residual_block_info);
 
     std::vector<double *> &parameter_blocks = residual_block_info->parameter_blocks;
     std::vector<int> parameter_block_sizes = residual_block_info->cost_function->parameter_block_sizes();
 
-    for (int i = 0; i < static_cast<int>(residual_block_info->parameter_blocks.size()); i++)
-    {
+	// 将优化变量添加到parameter_block_size中：long为参数地址,int为参数维度
+    for (int i = 0; i < static_cast<int>(residual_block_info->parameter_blocks.size()); i++) {
         double *addr = parameter_blocks[i];
         int size = parameter_block_sizes[i];
         parameter_block_size[reinterpret_cast<long>(addr)] = size;
     }
 
-    for (int i = 0; i < static_cast<int>(residual_block_info->drop_set.size()); i++)
-    {
+	// 将需边缘化的优化变量添加到parameter_block_idx中：long为参数地址，int参数维度累加值
+    for (int i = 0; i < static_cast<int>(residual_block_info->drop_set.size()); i++) {
         double *addr = parameter_blocks[residual_block_info->drop_set[i]];
-        parameter_block_idx[reinterpret_cast<long>(addr)] = 0;
+        parameter_block_idx[reinterpret_cast<long>(addr)] = 0;	// 初始值为0
     }
 }
 
-//计算每个残差，对应的Jacobian，并更新parameter_block_data
-void MarginalizationInfo::preMarginalize()
-{
-    for (auto it : factors)
-    {
+// 计算每个残差，对应的Jacobian，并更新parameter_block_data
+void MarginalizationInfo::preMarginalize() {
+    for (auto it : factors) {
         it->Evaluate();
 
         std::vector<int> block_sizes = it->cost_function->parameter_block_sizes();
-        for (int i = 0; i < static_cast<int>(block_sizes.size()); i++)
-        {
+        for (int i = 0; i < static_cast<int>(block_sizes.size()); i++) {
             long addr = reinterpret_cast<long>(it->parameter_blocks[i]);
             int size = block_sizes[i];
-            if (parameter_block_data.find(addr) == parameter_block_data.end())
-            {
-                double *data = new double[size];
-                memcpy(data, it->parameter_blocks[i], sizeof(double) * size);
+            if (parameter_block_data.find(addr) == parameter_block_data.end()) {
+				double *data = new double[size];
+				memcpy(data, it->parameter_blocks[i], sizeof(double) * size);
                 parameter_block_data[addr] = data;
             }
         }
     }
 }
 
-int MarginalizationInfo::localSize(int size) const
-{
+int MarginalizationInfo::localSize(int size) const {
     return size == 7 ? 6 : size;
 }
 
-int MarginalizationInfo::globalSize(int size) const
-{
+int MarginalizationInfo::globalSize(int size) const {
     return size == 6 ? 7 : size;
 }
 
-void* ThreadsConstructA(void* threadsstruct)
-{
+void* ThreadsConstructA(void* threadsstruct) {
     ThreadsStruct* p = ((ThreadsStruct*)threadsstruct);
     for (auto it : p->sub_factors)
     {
