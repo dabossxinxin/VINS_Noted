@@ -29,7 +29,7 @@ bool InitialEXRotation::CalibrationExRotation(
 
         double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
         ++sum_ok;
-        Eigen::Matrix4d L, R;
+		Eigen::Matrix4d L, R;
 
         // R_bk+1^bk * R_c^b = R_c^b * R_ck+1^ck
         // [Q1(q_bk+1^bk) - Q2(q_ck+1^ck)] * q_c^b = 0
