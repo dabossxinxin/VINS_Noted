@@ -164,7 +164,7 @@ void RefineGravity(
 *  @optional    速度、重力向量和尺度初始化Paper -> V-B-2
 *               相邻帧之间的位置和速度与IMU预积分出来的位置和速度对齐，求解最小二乘
 *               重力细化 -> Paper V-B-3    
-*  @param[in]   all_image_frame 所有图像帧构成的map,图像帧保存了位姿，预积分量和关于角点的信息
+*  @param[in]   all_image_frame 所有图像帧构成的map
 *  @param[out]  g               重力加速度
 *  @param[out]  x               待优化变量，窗口中每帧的速度V[0:n]、重力g、尺度s
 *  @return      void
@@ -185,23 +185,23 @@ bool LinearAlignment(
     std::map<double, ImageFrame>::iterator frame_i;
     std::map<double, ImageFrame>::iterator frame_j;
     int i = 0;
-    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); ++frame_i, ++i) {
+    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++, i++) {
         frame_j = next(frame_i);
-
         Eigen::MatrixXd tmp_A(6, 10);
         tmp_A.setZero();
         Eigen::VectorXd tmp_b(6);
         tmp_b.setZero();
 
+        // 获取两帧之间的预积分时间
         double dt = frame_j->second.pre_integration->sum_dt;
 
-        // tmp_A(6,10) = H^bk_bk+1 = [-I*dt           0             (R^bk_c0)*dt*dt/2   (R^bk_c0)*((p^c0_ck+1)-(p^c0_ck))  ] 
+        // tmp_A(6,10) = H^bk_bk+1 = [-I*dt           0             (R^bk_c0)*dt*dt/2   (R^bk_c0)*((p^c0_ck+1)-(p^c0_ck))  ]
         //                           [ -I    (R^bk_c0)*(R^c0_bk+1)      (R^bk_c0)*dt                  0                    ]
         // tmp_b(6,1 ) = z^bk_bk+1 = [ (a^bk_bk+1)+(R^bk_c0)*(R^c0_bk+1)*p^b_c-p^b_c , (b^bk_bk+1)]^T
         // tmp_A * x = tmp_b 求解最小二乘问题
         tmp_A.block<3, 3>(0, 0) = -dt * Matrix3d::Identity();
-        tmp_A.block<3, 3>(0, 6) = frame_i->second.R.transpose() * dt * dt / 2 * Matrix3d::Identity();
-        tmp_A.block<3, 1>(0, 9) = frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T) / 100.0;     
+        tmp_A.block<3, 3>(0, 6) = frame_i->second.R.transpose() * dt * dt * 0.5 * Matrix3d::Identity();
+        tmp_A.block<3, 1>(0, 9) = frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T) / 100.0;
         tmp_b.block<3, 1>(0, 0) = frame_j->second.pre_integration->delta_p + frame_i->second.R.transpose() * frame_j->second.R * TIC[0] - TIC[0];
         //cout << "delta_p   " << frame_j->second.pre_integration->delta_p.transpose() << endl;
         tmp_A.block<3, 3>(3, 0) = -Matrix3d::Identity();
@@ -241,7 +241,7 @@ bool LinearAlignment(
 		return false;
     }
 
-    // 求出来的重力向量细化
+    // 求出来的重力根据已知的重力模值重新精细化求解
     RefineGravity(all_image_frame, g, x);
     
     s = (x.tail<1>())(0) / 100.0;

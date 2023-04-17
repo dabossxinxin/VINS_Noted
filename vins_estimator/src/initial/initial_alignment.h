@@ -13,7 +13,7 @@ using namespace std;
 
 /*!
 *  @class ImageFrame 图像帧
-*  @Description  图像帧类可由图像帧的特征点与时间戳构造，
+*  @Description  图像帧类可由图像帧的特征点与时间戳构造
 */
 class ImageFrame
 {
