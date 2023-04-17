@@ -9,8 +9,7 @@ class Utility
 {
   public:
     template <typename Derived>
-    static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta)
-    {
+    static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta) {
         typedef typename Derived::Scalar Scalar_t;
 
         Eigen::Quaternion<Scalar_t> dq;
@@ -44,8 +43,7 @@ class Utility
     }
 
     template <typename Derived>
-    static Eigen::Matrix<typename Derived::Scalar, 4, 4> Qleft(const Eigen::QuaternionBase<Derived> &q)
-    {
+    static Eigen::Matrix<typename Derived::Scalar, 4, 4> Qleft(const Eigen::QuaternionBase<Derived> &q) {
         Eigen::Quaternion<typename Derived::Scalar> qq = positify(q);
         Eigen::Matrix<typename Derived::Scalar, 4, 4> ans;
         ans(0, 0) = qq.w(), ans.template block<1, 3>(0, 1) = -qq.vec().transpose();
@@ -54,8 +52,7 @@ class Utility
     }
 
     template <typename Derived>
-    static Eigen::Matrix<typename Derived::Scalar, 4, 4> Qright(const Eigen::QuaternionBase<Derived> &p)
-    {
+    static Eigen::Matrix<typename Derived::Scalar, 4, 4> Qright(const Eigen::QuaternionBase<Derived> &p) {
         Eigen::Quaternion<typename Derived::Scalar> pp = positify(p);
         Eigen::Matrix<typename Derived::Scalar, 4, 4> ans;
         ans(0, 0) = pp.w(), ans.template block<1, 3>(0, 1) = -pp.vec().transpose();
@@ -63,8 +60,7 @@ class Utility
         return ans;
     }
 
-    static Eigen::Vector3d R2ypr(const Eigen::Matrix3d &R)
-    {
+    static Eigen::Vector3d R2ypr(const Eigen::Matrix3d &R) {
         Eigen::Vector3d n = R.col(0);
         Eigen::Vector3d o = R.col(1);
         Eigen::Vector3d a = R.col(2);
@@ -81,8 +77,7 @@ class Utility
     }
 
     template <typename Derived>
-    static Eigen::Matrix<typename Derived::Scalar, 3, 3> ypr2R(const Eigen::MatrixBase<Derived> &ypr)
-    {
+    static Eigen::Matrix<typename Derived::Scalar, 3, 3> ypr2R(const Eigen::MatrixBase<Derived> &ypr) {
         typedef typename Derived::Scalar Scalar_t;
 
         Scalar_t y = ypr(0) / 180.0 * M_PI;

@@ -207,12 +207,10 @@ void pubKeyPoses(const Estimator &estimator, const std_msgs::Header &header)
     pub_key_poses.publish(key_poses);
 }
 
-void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header)
-{
+void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header) {
     int idx2 = WINDOW_SIZE - 1;
 
-    if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
-    {
+    if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR) {
         int i = idx2;
         Vector3d P = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[0];
         Quaterniond R = Quaterniond(estimator.Rs[i] * estimator.ric[0]);
@@ -236,14 +234,12 @@ void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header)
     }
 }
 
-void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
-{
+void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header) {
     sensor_msgs::PointCloud point_cloud, loop_point_cloud;
     point_cloud.header = header;
     loop_point_cloud.header = header;
 
-    for (auto &it_per_id : estimator.f_manager.feature)
-    {
+    for (auto &it_per_id : estimator.f_manager.feature) {
         int used_num;
         used_num = it_per_id.feature_per_frame.size();
         if (!(used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))

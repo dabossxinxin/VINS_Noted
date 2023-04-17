@@ -822,8 +822,7 @@ void Estimator::optimization()
     vector2double();
 
     // 添加边缘化残差
-    if (last_marginalization_info)
-    {
+    if (last_marginalization_info) {
         // construct new marginlization_factor
         MarginalizationFactor *marginalization_factor = new MarginalizationFactor(last_marginalization_info);
         problem.AddResidualBlock(marginalization_factor, NULL,
@@ -954,7 +953,7 @@ void Estimator::optimization()
         MarginalizationInfo *marginalization_info = new MarginalizationInfo();
         vector2double();
 
-        //1、将上一次先验残差项传递给marginalization_info
+        // 1、将上一次先验残差项传递给marginalization_info
         if (last_marginalization_info) {
 			std::vector<int> drop_set;
             for (int i = 0; i < static_cast<int>(last_marginalization_parameter_blocks.size()); i++) {
@@ -964,65 +963,68 @@ void Estimator::optimization()
             }
             // construct new marginlization_factor
             MarginalizationFactor *marginalization_factor = new MarginalizationFactor(last_marginalization_info);
-            ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(marginalization_factor, NULL,
-                                                                           last_marginalization_parameter_blocks,
-                                                                           drop_set);
-
+            ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(
+                marginalization_factor, NULL,
+                last_marginalization_parameter_blocks,
+                drop_set);
             marginalization_info->addResidualBlockInfo(residual_block_info);
         }
 
-        //2、将第0帧和第1帧间的IMU因子IMUFactor(pre_integrations[1])，添加到marginalization_info中
+        // 2、将第0帧和第1帧间的IMU因子IMUFactor(pre_integrations[1])，添加到marginalization_info中
         {
-            if (pre_integrations[1]->sum_dt < 10.0)
-            {
+            if (pre_integrations[1]->sum_dt < 10.0) {
                 IMUFactor* imu_factor = new IMUFactor(pre_integrations[1]);
-                ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(imu_factor, NULL,
-                                                                           vector<double *>{para_Pose[0], para_SpeedBias[0], para_Pose[1], para_SpeedBias[1]},
-                                                                           vector<int>{0, 1});
+                ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(
+                    imu_factor, NULL,
+                    std::vector<double *>{para_Pose[0], para_SpeedBias[0], para_Pose[1], para_SpeedBias[1]},
+                    std::vector<int>{0, 1});
                 marginalization_info->addResidualBlockInfo(residual_block_info);
             }
         }
 
-        //3、将第一次观测为第0帧的所有路标点对应的视觉观测，添加到marginalization_info中
+        // 3、将第一次观测为第0帧的所有路标点对应的视觉观测，添加到marginalization_info中
         {
             int feature_index = -1;
-            for (auto &it_per_id : f_manager.feature)
-            {
+            for (auto &it_per_id : f_manager.feature) {
                 it_per_id.used_num = it_per_id.feature_per_frame.size();
-                if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
+                if (!(it_per_id.used_num >= 2 && 
+                    it_per_id.start_frame < WINDOW_SIZE - 2)) {
                     continue;
+                }
 
                 ++feature_index;
 
                 int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
-                if (imu_i != 0)
+                if (imu_i != 0) {
                     continue;
+                }
 
-                Vector3d pts_i = it_per_id.feature_per_frame[0].point;
+                Eigen::Vector3d pts_i = it_per_id.feature_per_frame[0].point;
 
-                for (auto &it_per_frame : it_per_id.feature_per_frame)
-                {
+                for (auto &it_per_frame : it_per_id.feature_per_frame) {
                     imu_j++;
-                    if (imu_i == imu_j)
+                    if (imu_i == imu_j) {
                         continue;
+                    }
 
-                    Vector3d pts_j = it_per_frame.point;
-                    if (ESTIMATE_TD)
-                    {
-                        ProjectionTdFactor *f_td = new ProjectionTdFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
-                                                                          it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td,
-                                                                          it_per_id.feature_per_frame[0].uv.y(), it_per_frame.uv.y());
-                        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(f_td, loss_function,
-                                                                                        vector<double *>{para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index], para_Td[0]},
-                                                                                        vector<int>{0, 3});
+                    Eigen::Vector3d pts_j = it_per_frame.point;
+                    if (ESTIMATE_TD) {
+                        ProjectionTdFactor *f_td = new ProjectionTdFactor(
+                            pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
+                            it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td,
+                            it_per_id.feature_per_frame[0].uv.y(), it_per_frame.uv.y());
+                        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(
+                            f_td, loss_function,
+                            std::vector<double *>{para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index], para_Td[0]},
+                            std::vector<int>{0, 3});
                         marginalization_info->addResidualBlockInfo(residual_block_info);
                     }
-                    else
-                    {
+                    else {
                         ProjectionFactor *f = new ProjectionFactor(pts_i, pts_j);
-                        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(f, loss_function,
-                                                                                       vector<double *>{para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index]},
-                                                                                       vector<int>{0, 3});
+                        ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(
+                            f, loss_function,
+                            std::vector<double *>{para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index]},
+                            std::vector<int>{0, 3});
 						marginalization_info->addResidualBlockInfo(residual_block_info);
                     }
                 }
@@ -1049,60 +1051,56 @@ void Estimator::optimization()
             addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i - 1];
             addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
         }
-        for (int i = 0; i < NUM_OF_CAM; i++)
+        for (int i = 0; i < NUM_OF_CAM; i++) {
             addr_shift[reinterpret_cast<long>(para_Ex_Pose[i])] = para_Ex_Pose[i];
-        if (ESTIMATE_TD)
-        {
+        }
+        if (ESTIMATE_TD) {
             addr_shift[reinterpret_cast<long>(para_Td[0])] = para_Td[0];
         }
-        vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
+        std::vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
 
-        if (last_marginalization_info)
+        if (last_marginalization_info) {
             delete last_marginalization_info;
+        }
         last_marginalization_info = marginalization_info;
 		last_marginalization_parameter_blocks = parameter_blocks;
     }
-
     //如果次新帧不是关键帧：
-    else
-    {
+    else {
         if (last_marginalization_info &&
-            std::count(std::begin(last_marginalization_parameter_blocks), std::end(last_marginalization_parameter_blocks), para_Pose[WINDOW_SIZE - 1]))
-        {
+            std::count(std::begin(last_marginalization_parameter_blocks), std::end(last_marginalization_parameter_blocks), para_Pose[WINDOW_SIZE - 1])) {
             //1.保留次新帧的IMU测量，丢弃该帧的视觉测量，将上一次先验残差项传递给marginalization_info
             MarginalizationInfo *marginalization_info = new MarginalizationInfo();
             vector2double();
-            if (last_marginalization_info)
-            {
-                vector<int> drop_set;
-                for (int i = 0; i < static_cast<int>(last_marginalization_parameter_blocks.size()); i++)
-                {
+            if (last_marginalization_info) {
+                std::vector<int> drop_set;
+                for (int i = 0; i < static_cast<int>(last_marginalization_parameter_blocks.size()); i++) {
                     ROS_ASSERT(last_marginalization_parameter_blocks[i] != para_SpeedBias[WINDOW_SIZE - 1]);
                     if (last_marginalization_parameter_blocks[i] == para_Pose[WINDOW_SIZE - 1])
                         drop_set.push_back(i);
                 }
                 // construct new marginlization_factor
                 MarginalizationFactor *marginalization_factor = new MarginalizationFactor(last_marginalization_info);
-                ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(marginalization_factor, NULL,
-                                                                               last_marginalization_parameter_blocks,
-                                                                               drop_set);
-
+                ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(
+                    marginalization_factor, NULL,
+                    last_marginalization_parameter_blocks,
+                    drop_set);
                 marginalization_info->addResidualBlockInfo(residual_block_info);
             }
 
-            //2、premargin
+            // 2、premargin
             TicToc t_pre_margin;
             ROS_DEBUG("begin marginalization");
             marginalization_info->preMarginalize();
             ROS_DEBUG("end pre marginalization, %f ms", t_pre_margin.toc());
 
-            //3、marginalize
+            // 3、marginalize
             TicToc t_margin;
             ROS_DEBUG("begin marginalization");
             marginalization_info->marginalize();
             ROS_DEBUG("end marginalization, %f ms", t_margin.toc());
             
-            //4.调整参数块在下一次窗口中对应的位置（去掉次新帧）
+            // 4.调整参数块在下一次窗口中对应的位置（去掉次新帧）
             std::unordered_map<long, double *> addr_shift;
             for (int i = 0; i <= WINDOW_SIZE; i++)
             {
@@ -1119,19 +1117,19 @@ void Estimator::optimization()
                     addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i];
                 }
             }
-            for (int i = 0; i < NUM_OF_CAM; i++)
+            for (int i = 0; i < NUM_OF_CAM; i++) {
                 addr_shift[reinterpret_cast<long>(para_Ex_Pose[i])] = para_Ex_Pose[i];
-            if (ESTIMATE_TD)
-            {
+            }
+            if (ESTIMATE_TD) {
                 addr_shift[reinterpret_cast<long>(para_Td[0])] = para_Td[0];
             }
             
-            vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
-            if (last_marginalization_info)
+            std::vector<double *> parameter_blocks = marginalization_info->getParameterBlocks(addr_shift);
+            if (last_marginalization_info) {
                 delete last_marginalization_info;
+            }
             last_marginalization_info = marginalization_info;
             last_marginalization_parameter_blocks = parameter_blocks;
-            
         }
     }
     ROS_DEBUG("whole marginalization costs: %f", t_whole_marginalization.toc());

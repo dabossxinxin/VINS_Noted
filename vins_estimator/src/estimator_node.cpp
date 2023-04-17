@@ -101,9 +101,9 @@ void update()
     gyr_0 = estimator.gyr_0;
 
     queue<sensor_msgs::ImuConstPtr> tmp_imu_buf = imu_buf;
-    for (sensor_msgs::ImuConstPtr tmp_imu_msg; !tmp_imu_buf.empty(); tmp_imu_buf.pop())
+    for (sensor_msgs::ImuConstPtr tmp_imu_msg; !tmp_imu_buf.empty(); tmp_imu_buf.pop()) {
         predict(tmp_imu_buf.front());
-
+    }
 }
 
 /**
@@ -173,7 +173,6 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
         return;
     }
     last_imu_t = imu_msg->header.stamp.toSec();
-
 
     m_buf.lock();
     imu_buf.push(imu_msg);
@@ -250,9 +249,9 @@ void relocalization_callback(const sensor_msgs::PointCloudConstPtr &points_msg)
 /**
  * @brief   VIO的主线程
  * @Description 等待并获取measurements：(IMUs, img_msg)s，计算dt
- *              estimator.processIMU()进行IMU预积分         
+ *              estimator.processIMU()进行IMU预积分
  *              estimator.setReloFrame()设置重定位帧
- *              estimator.processImage()处理图像帧：初始化，紧耦合的非线性优化     
+ *              estimator.processImage()处理图像帧：初始化，紧耦合的非线性优化
  * @return      void
 */
 void process()
