@@ -1,11 +1,9 @@
 #include "pose_graph.h"
 
-PoseGraph::PoseGraph()
-{
+PoseGraph::PoseGraph() {
     posegraph_visualization = new CameraPoseVisualization(1.0, 0.0, 1.0, 1.0);
     posegraph_visualization->setScale(0.1);
     posegraph_visualization->setLineWidth(0.01);
-    //创建4自由度位姿图优化线程
 	t_optimization = std::thread(&PoseGraph::optimize4DoF, this);
     earliest_loop_index = -1;
     t_drift = Eigen::Vector3d(0, 0, 0);
@@ -17,22 +15,20 @@ PoseGraph::PoseGraph()
     sequence_cnt = 0;
     sequence_loop.push_back(0);
     base_sequence = 1;
-
 }
 
-PoseGraph::~PoseGraph()
-{
+PoseGraph::~PoseGraph() {
 	t_optimization.join();
 }
 
-//发布轨迹的topic
-void PoseGraph::registerPub(ros::NodeHandle &n)
-{
+// 发布轨迹的topic
+void PoseGraph::registerPub(ros::NodeHandle &n) {
     pub_pg_path = n.advertise<nav_msgs::Path>("pose_graph_path", 1000);
     pub_base_path = n.advertise<nav_msgs::Path>("base_path", 1000);
     pub_pose_graph = n.advertise<visualization_msgs::MarkerArray>("pose_graph", 1000);
-    for (int i = 1; i < 10; i++)
-        pub_path[i] = n.advertise<nav_msgs::Path>("path_" + to_string(i), 1000);
+	for (int i = 1; i < 10; i++) {
+		pub_path[i] = n.advertise<nav_msgs::Path>("path_" + to_string(i), 1000);
+	}
 }
 
 //加载Brief字典
