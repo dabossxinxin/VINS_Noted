@@ -491,7 +491,7 @@ void PoseGraph::optimize4DoF() {
 					problem.SetParameterBlockConstant(t_array[i]);
 				};
 
-                // 添加优化残差
+                // 添加顺序边优化残差
 				for (int j = 1; j < 5; j++) {
 					if (i - j >= 0 && sequence_array[i] == sequence_array[i - j]) {
 						Eigen::Vector3d euler_conncected = Utility::R2ypr(q_array[i - j].toRotationMatrix());
@@ -507,7 +507,7 @@ void PoseGraph::optimize4DoF() {
 					}
 				}
 
-                //add loop edge
+                // 添加闭环边优化变量
                 if((*it)->has_loop) {
                     assert((*it)->loop_index >= first_looped_index);
                     int connected_index = getKeyFrame((*it)->loop_index)->local_index;
